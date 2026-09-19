@@ -398,6 +398,9 @@ video{border-radius:16px;background:#000;object-fit:cover;}
   .wa-status-ring .avatar{width:100%;height:100%;border:3px solid var(--surface);}
   .wa-section-label{font-size:.68rem;color:var(--text3);font-weight:800;text-transform:uppercase;letter-spacing:.08em;margin:1rem 0 .55rem;}
   .wa-empty-card{text-align:center;padding:2rem 1rem;border:1px dashed var(--border);border-radius:16px;color:var(--text3);font-size:.75rem;line-height:1.6;}
+  .wa-update{display:flex;gap:.7rem;padding:.8rem 0;border-bottom:1px solid var(--border);}
+  .wa-update:last-child{border-bottom:0;}
+  .wa-update-text{font-size:.76rem;line-height:1.5;margin-top:.18rem;}
   .wa-call-row{display:flex;align-items:center;gap:.7rem;padding:.75rem 0;border-bottom:1px solid var(--border);}
   .wa-call-icon{margin-left:auto;color:var(--accent2);font-size:1rem;}
   #appScreen.mobile-chat-active .chat-area{padding-bottom:4.25rem;}
@@ -1034,14 +1037,25 @@ function editProfile(){
     showToast('✅','Profile updated','Your profile changes are saved');
   }).catch(e=>showToast('⚠️','Could not update profile',e.message));
 }
-function renderStatusPanel(){
+async function renderStatusPanel(){
   document.getElementById('searchWrap').style.display='none';
   document.getElementById('addWrap').style.display='none';
-  document.getElementById('listSec').innerHTML=`<div class="wa-panel">
-    <div class="wa-panel-head"><div><div class="wa-panel-title">Status</div><div class="wa-panel-sub">Share a moment with your circle</div></div><button class="wa-action" onclick="showToast('✨','Status updates','Status sharing is coming soon')">＋ Add status</button></div>
-    <div class="wa-status-card"><div class="wa-status-ring"><div class="avatar" style="background:${myUser.color||'#6c63ff'}22;color:${myUser.color||'#6c63ff'}">${ini(myUser.name)}</div></div><div><strong>My status</strong><div class="wa-panel-sub">Tap to add a status update</div></div></div>
-    <div class="wa-section-label">Recent updates</div><div class="wa-empty-card">No new updates yet.<br>When your friends post, they’ll appear here.</div>
-  </div>`;
+  document.getElementById('listSec').innerHTML='<div class="loading-row"><div class="spinner"></div>&nbsp;Loading updates…</div>';
+  try{
+    const updates=await api('/api/status');
+    const rows=updates.map(update=>`<div class="wa-update"><div class="wa-status-ring"><div class="avatar" style="background:${update.user.color||'#6c63ff'}22;color:${update.user.color||'#6c63ff'}">${ini(update.user.name)}</div></div><div><strong>${esc(update.user.name)}</strong><div class="wa-panel-sub">${fmtDate(new Date(update.createdAt))}</div><div class="wa-update-text">${esc(update.text)}</div></div></div>`).join('');
+    document.getElementById('listSec').innerHTML=`<div class="wa-panel">
+      <div class="wa-panel-head"><div><div class="wa-panel-title">Status</div><div class="wa-panel-sub">Share a moment with your circle</div></div><button class="wa-action" onclick="createStatus()">＋ Add status</button></div>
+      <div class="wa-status-card"><div class="wa-status-ring"><div class="avatar" style="background:${myUser.color||'#6c63ff'}22;color:${myUser.color||'#6c63ff'}">${ini(myUser.name)}</div></div><div><strong>My status</strong><div class="wa-panel-sub">Visible for 24 hours</div></div></div>
+      <div class="wa-section-label">Recent updates</div>${rows||'<div class="wa-empty-card">No new updates yet.<br>Be the first to share something.</div>'}
+    </div>`;
+  }catch(e){document.getElementById('listSec').innerHTML=`<div class="wa-empty-card">${esc(e.message)}</div>`;}
+}
+async function createStatus(){
+  const text=prompt('Share a status update (500 characters max)');
+  if(text===null)return;
+  try{await api('/api/status','POST',{text});showToast('✨','Status posted','Your update is live for 24 hours');renderStatusPanel();}
+  catch(e){showToast('⚠️','Could not post status',e.message);}
 }
 async function renderCallsPanel(){
   document.getElementById('searchWrap').style.display='none';

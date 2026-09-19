@@ -41,7 +41,7 @@ test('serves the application shell', async () => {
 });
 
 test('rejects protected routes without a token', async () => {
-  for (const route of ['/api/me', '/api/dms', '/api/courses']) {
+  for (const route of ['/api/me', '/api/dms', '/api/courses', '/api/status']) {
     const response = await request(route);
     assert.equal(response.status, 401, route);
   }
@@ -73,6 +73,17 @@ test('requires a file for authenticated uploads', async () => {
   const response = await request('/api/upload', {
     method: 'POST',
     headers: { authorization: `Bearer ${token}` }
+  });
+
+  test('validates status updates before database access', async () => {
+    const token = jwt.sign({ id: 'test-user', email: 'test@example.com' }, jwtSecret);
+    const response = await request('/api/status', {
+      method: 'POST',
+      headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' },
+      body: JSON.stringify({ text: '' })
+    });
+    assert.equal(response.status, 400);
+    assert.match(await response.text(), /Status must be between 1 and 500/);
   });
   assert.equal(response.status, 400);
   assert.match(await response.text(), /No file uploaded/);

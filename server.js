@@ -250,6 +250,7 @@ const makeTableAdapter = (tableName, { defaultOrder = null, defaultAscending = f
 
 const User = makeTableAdapter('users');
 const Message = makeTableAdapter('messages', { defaultOrder: 'created_at', defaultAscending: true });
+const StatusUpdate = makeTableAdapter('status_updates', { defaultOrder: 'created_at', defaultAscending: false });
 const DM = makeTableAdapter('dms', { defaultOrder: 'last_at', defaultAscending: false });
 const Clique = makeTableAdapter('cliques', { defaultOrder: 'last_at', defaultAscending: false });
 const Homework = makeTableAdapter('homework', { defaultOrder: 'due_date', defaultAscending: true });
@@ -459,6 +460,22 @@ app.patch('/api/me/profile', auth, async (req, res) => {
   if (bio.length > 240) return res.status(400).json({ error: 'Bio must be 240 characters or less' });
   const u = await User.findByIdAndUpdate(req.userId, { name, bio }, { new: true });
   res.json(safeUser(u));
+});
+
+app.get('/api/status', auth, async (req, res) => {
+  const updates = await StatusUpdate.find({});
+  const active = updates.filter(update => new Date(update.expiresAt) > new Date());
+  const users = await User.find({});
+  const byId = new Map(users.map(user => [user._id, safeUser(user)]));
+  res.json(active.map(update => ({ ...update, user: byId.get(update.userId) || null })).filter(update => update.user));
+});
+
+app.post('/api/status', auth, async (req, res) => {
+  const text = typeof req.body.text === 'string' ? req.body.text.trim() : '';
+  if (!text || text.length > 500) return res.status(400).json({ error: 'Status must be between 1 and 500 characters' });
+  const update = await StatusUpdate.create({ userId: req.userId, text, expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() });
+  const user = await User.findById(req.userId);
+  res.status(201).json({ ...update, user: safeUser(user) });
 });
 
 // ── PUSH NOTIFICATIONS ────────────────────────────────────────

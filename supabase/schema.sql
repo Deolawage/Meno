@@ -38,6 +38,15 @@ alter table messages add column if not exists read_by uuid[] not null default '{
 
 create index if not exists idx_messages_room_id on messages(room_id);
 
+create table if not exists status_updates (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references users(id) on delete cascade,
+  text text not null check (char_length(trim(text)) between 1 and 500),
+  created_at timestamptz not null default now(),
+  expires_at timestamptz not null default (now() + interval '24 hours')
+);
+create index if not exists idx_status_updates_expires_at on status_updates(expires_at);
+
 create table if not exists dms (
   id uuid primary key default gen_random_uuid(),
   members uuid[] not null default '{}',
