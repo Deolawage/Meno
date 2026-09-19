@@ -47,7 +47,7 @@ Meno is a real-time student social and study app built for university students. 
 | **Real-time** | Socket.io |
 | **Database** | Supabase (PostgreSQL) |
 | **Auth** | JWT + bcrypt |
-| **File Uploads** | Multer |
+| **File Uploads** | Multer + private Supabase Storage |
 | **Voice/Video Calls** | WebRTC (peer-to-peer) |
 | **Push Notifications** | Web Push (VAPID) |
 | **AI Assistant** | Anthropic Claude API |
@@ -78,11 +78,23 @@ npm install
 1. Create a new Supabase project.
 2. Open the SQL editor and run the migration in `supabase/schema.sql`.
 3. Copy your project URL and anon/service keys from the Supabase dashboard.
+
+The schema creates private `course-files` and `chat-files` Storage buckets. Course documents, chat attachments, and voice notes are uploaded through the authenticated server and are not stored on the application filesystem.
 4. In Supabase **Authentication → URL Configuration**, set the Site URL to
-   `http://localhost:3000` while developing. Add your production URL before deployment.
-5. To enable Google sign-in, open **Authentication → Providers → Google**, enable it,
-   add the Google OAuth client ID and secret, and include `http://localhost:3000` as
-   an authorized redirect URL in Google Cloud Console.
+   `http://localhost:3000` while developing. Add `http://localhost:3000/**` to the
+   Redirect URLs list, then add the production URL and its callback path before deployment.
+5. To enable Google sign-in:
+   - In Google Cloud Console, create an OAuth Web application.
+   - Add `http://localhost:3000` under Authorized JavaScript origins.
+   - Add `https://YOUR_PROJECT_REF.supabase.co/auth/v1/callback` under Authorized redirect URIs.
+   - In Supabase **Authentication → Providers → Google**, enable Google and paste the
+     Google client ID and client secret.
+   - Restart Meno and use **Continue with Google**. Supabase returns the provider session
+     to `APP_URL`, where Meno exchanges it for its protected application session.
+6. For registration verification and password reset emails, configure Supabase
+   **Authentication → SMTP Settings** for production. Keep the default Supabase email
+   service for local testing only, then verify the email templates link back to
+   `APP_URL` and test both flows from the login screen.
 
 ### 4. Set up environment variables
 ```bash

@@ -9,7 +9,6 @@ const jwt        = require('jsonwebtoken');
 const cors       = require('cors');
 const path       = require('path');
 const multer     = require('multer');
-const fs         = require('fs');
 const webpush    = require('web-push');
 
 const app    = express();
@@ -21,18 +20,11 @@ app.disable('x-powered-by');
 app.use(cors({ origin: '*' }));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // ── FILE UPLOADS ──────────────────────────────────────────────
-const uploadDir = path.join(__dirname, 'uploads');
-if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
-
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, uploadDir),
-  filename:    (req, file, cb) => cb(null, Date.now() + '-' + file.originalname.replace(/[^a-z0-9.]/gi, '_'))
-});
-const upload = multer({ storage, limits: { fileSize: 10 * 1024 * 1024 } }); // 10MB
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } }); // 10MB
 const courseUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 25 * 1024 * 1024 } });
+const CHAT_FILE_BUCKET = 'chat-files';
 
 // ── WEB PUSH ──────────────────────────────────────────────────
 if (process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY) {
@@ -709,15 +701,30 @@ app.get('/api/messages/:roomId', auth, async (req, res) => {
 
 // ── FILE UPLOAD ───────────────────────────────────────────────
 app.post('/api/upload', auth, upload.single('file'), async (req, res) => {
-  if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
-  const isImage = req.file.mimetype.startsWith('image/');
-  res.json({
-    url:      `/uploads/${req.file.filename}`,
-    name:     req.file.originalname,
-    size:     req.file.size,
-    isImage,
-    isAudio:  req.file.mimetype.startsWith('audio/')
-  });
+  try {
+    if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
+    if (!supabase) return res.status(503).json({ error: 'File storage is not configured' });
+    const safeName = req.file.originalname.replace(/[^a-z0-9._-]/gi, '_').slice(0, 120);
+    const storagePath = `${req.userId}/${crypto.randomUUID()}-${safeName}`;
+    const { error: uploadError } = await supabase.storage.from(CHAT_FILE_BUCKET).upload(storagePath, req.file.buffer, {
+      contentType: req.file.mimetype,
+      upsert: false
+    });
+    if (uploadError) throw uploadError;
+    const { data, error: urlError } = await supabase.storage.from(CHAT_FILE_BUCKET).createSignedUrl(storagePath, 60 * 60 * 24 * 365);
+    if (urlError) throw urlError;
+    const isImage = req.file.mimetype.startsWith('image/');
+    res.json({
+      url: data.signedUrl,
+      name: req.file.originalname,
+      size: req.file.size,
+      isImage,
+      isAudio: req.file.mimetype.startsWith('audio/')
+    });
+  } catch (e) {
+    console.error('Chat file upload failed:', e);
+    res.status(500).json({ error: 'Unable to upload this file' });
+  }
 });
 
 // ── AI STUDY ASSISTANT ────────────────────────────────────────

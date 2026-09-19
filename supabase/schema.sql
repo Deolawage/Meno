@@ -145,6 +145,9 @@ create index if not exists idx_course_files_folder_id on course_files(folder_id)
 insert into storage.buckets (id, name, public)
 values ('course-files', 'course-files', false)
 on conflict (id) do nothing;
+insert into storage.buckets (id, name, public)
+values ('chat-files', 'chat-files', false)
+on conflict (id) do nothing;
 
 -- The backend uses the Supabase service-role key, so direct public API access
 -- must be denied. Service-role requests continue to work because they bypass RLS.
