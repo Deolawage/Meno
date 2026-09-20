@@ -114,7 +114,7 @@ PORT=3000
 # Optional - for AI assistant
 GROQ_API_KEY=your_groq_api_key
 # Optional model override
-# GROQ_MODEL=llama-3.3-70b-versatile
+# GROQ_MODEL=openai/gpt-oss-20b
 
 # Optional - for push notifications
 VAPID_PUBLIC_KEY=your_vapid_public_key

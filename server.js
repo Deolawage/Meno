@@ -756,7 +756,7 @@ app.post('/api/ai/ask', auth, async (req, res) => {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
       body: JSON.stringify({
-        model: process.env.GROQ_MODEL || 'llama-3.3-70b-versatile',
+        model: process.env.GROQ_MODEL || 'openai/gpt-oss-20b',
         messages: [
           { role: 'system', content: 'You are Meno AI, a friendly and helpful study assistant for students. Keep answers clear, concise and encouraging. Use emojis occasionally to keep it friendly. If asked to explain something, break it down simply.' },
           { role: 'user', content: prompt }
