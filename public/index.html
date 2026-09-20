@@ -558,7 +558,7 @@ video{border-radius:16px;background:#000;object-fit:cover;}
       <!-- AI BAR -->
       <div class="ai-bar" id="aiBar" style="display:none;">
         <span class="ai-label">🤖 AI</span>
-        <input class="ai-inp" id="aiInp" placeholder="Ask anything… e.g. explain photosynthesis" onkeydown="if(event.key==='Enter')askAI()">
+        <input class="ai-inp" id="aiInp" placeholder="Ask about this course…" onkeydown="if(event.key==='Enter')askAI()">
         <button class="ai-ask-btn" onclick="generateStudyTool('flashcards')" title="Generate flashcards">🃏</button>
         <button class="ai-ask-btn" onclick="generateStudyTool('quiz')" title="Generate quiz">❓</button>
         <button class="ai-ask-btn" id="aiAskBtn" onclick="askAI()">Ask →</button>
@@ -1391,7 +1391,17 @@ async function askAI(){
   const fakeQ={_id:'q'+Date.now(),roomId:activeRoomId,senderId:myUser._id,senderName:myUser.name,senderColor:myUser.color,text:q,type:'text',createdAt:new Date().toISOString(),reactions:{}};
   appendMessage(fakeQ);
   try{
-    const data=await api('/api/ai/ask','POST',{question:q});
+    let context='';
+    if(activeType==='course'){
+      const [notes,files]=await Promise.all([
+        api(`/api/notes?courseId=${encodeURIComponent(activeId)}`),
+        api(`/api/courses/${encodeURIComponent(activeId)}/files`)
+      ]);
+      const noteContext=notes.map(note=>`NOTE: ${note.title}\n${note.content}`).join('\n\n');
+      const fileContext=files.map(file=>`FILE: ${file.name} (${file.mimeType || 'unknown type'})`).join('\n');
+      context=`Course materials:\n${noteContext || 'No note content is available.'}\n\nCourse files:\n${fileContext || 'No files are available.'}\n\nFile contents are not extracted, so do not claim to have read a file unless its text appears in the notes above.`;
+    }
+    const data=await api('/api/ai/ask','POST',{question:q,context});
     const aiMsg={_id:'ai'+Date.now(),roomId:activeRoomId,senderId:'ai',senderName:'Meno AI',senderColor:var_accent,text:data.answer,type:'ai',createdAt:new Date().toISOString(),reactions:{}};
     appendMessage(aiMsg);
     // Also send to room so others see it
