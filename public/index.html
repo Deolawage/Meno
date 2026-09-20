@@ -704,20 +704,21 @@ video{border-radius:16px;background:#000;object-fit:cover;}
       <button class="mbtn pri" onclick="addHomework()">Add →</button>
     </div>
 
-    <!-- ADD NOTE MODAL -->
-    <div class="overlay" id="noteModal" onclick="overlayClose(event,'noteModal')">
-      <div class="modal">
-        <div class="modal-title">Add Course Note 📝</div>
-        <div class="modal-sub">Save a study note inside one of your courses</div>
-        <select class="modal-sel" id="noteCourse"><option value="">Choose a course</option></select>
-        <input class="modal-inp" id="noteTitle" placeholder="Note title">
-        <textarea class="modal-inp" id="noteContent" placeholder="Write your note…" rows="6" style="resize:vertical;"></textarea>
-        <div class="modal-err" id="noteErr"></div>
-        <div class="modal-acts">
-          <button class="mbtn sec" onclick="closeModal('noteModal')">Cancel</button>
-          <button class="mbtn pri" onclick="addNote()">Save →</button>
-        </div>
-      </div>
+  </div>
+</div>
+
+<!-- ADD NOTE MODAL -->
+<div class="overlay" id="noteModal" onclick="overlayClose(event,'noteModal')">
+  <div class="modal">
+    <div class="modal-title">Add Course Note 📝</div>
+    <div class="modal-sub">Save a study note inside one of your courses</div>
+    <select class="modal-sel" id="noteCourse"><option value="">Choose a course</option></select>
+    <input class="modal-inp" id="noteTitle" placeholder="Note title">
+    <textarea class="modal-inp" id="noteContent" placeholder="Write your note…" rows="6" style="resize:vertical;"></textarea>
+    <div class="modal-err" id="noteErr"></div>
+    <div class="modal-acts">
+      <button class="mbtn sec" onclick="closeModal('noteModal')">Cancel</button>
+      <button class="mbtn pri" onclick="addNote()">Save →</button>
     </div>
   </div>
 </div>
