@@ -758,10 +758,10 @@ app.post('/api/ai/ask', auth, async (req, res) => {
       body: JSON.stringify({
         model: process.env.GROQ_MODEL || 'openai/gpt-oss-20b',
         messages: [
-          { role: 'system', content: 'You are Meno AI, a friendly and helpful study assistant for students. Keep answers clear, concise and encouraging. Use emojis occasionally to keep it friendly. If asked to explain something, break it down simply.' },
+          { role: 'system', content: 'You are Meno AI, a friendly study assistant for students. Be directly relevant to the question. Answer in 2-4 short sentences or up to 5 concise bullet points. Give only the essential explanation; do not add an introduction, conclusion, repeated question, or unrelated tips. Use simple language and an occasional emoji only when natural.' },
           { role: 'user', content: prompt }
         ],
-        max_tokens: 1024
+        max_tokens: 256
       })
     });
     const data = await response.json();
