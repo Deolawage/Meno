@@ -748,22 +748,24 @@ app.post('/api/upload', auth, upload.single('file'), async (req, res) => {
 app.post('/api/ai/ask', auth, async (req, res) => {
   try {
     const { question, context } = req.body;
-    const apiKey = process.env.ANTHROPIC_API_KEY;
-    if (!apiKey) return res.status(400).json({ error: 'AI not configured. Add ANTHROPIC_API_KEY to .env' });
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) return res.status(400).json({ error: 'AI not configured. Add GEMINI_API_KEY to .env' });
 
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
+    const prompt = context ? `Context: ${context}\n\nQuestion: ${question}` : question;
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${encodeURIComponent(apiKey)}`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        model: 'claude-haiku-4-5-20251001',
-        max_tokens: 1024,
-        system: 'You are Meno AI, a friendly and helpful study assistant for students. Keep answers clear, concise and encouraging. Use emojis occasionally to keep it friendly. If asked to explain something, break it down simply.',
-        messages: [{ role: 'user', content: context ? `Context: ${context}\n\nQuestion: ${question}` : question }]
+        systemInstruction: { parts: [{ text: 'You are Meno AI, a friendly and helpful study assistant for students. Keep answers clear, concise and encouraging. Use emojis occasionally to keep it friendly. If asked to explain something, break it down simply.' }] },
+        contents: [{ role: 'user', parts: [{ text: prompt }] }],
+        generationConfig: { maxOutputTokens: 1024 }
       })
     });
     const data = await response.json();
-    if (!response.ok) throw new Error(data.error?.message || 'AI request failed');
-    res.json({ answer: data.content[0].text });
+    if (!response.ok) throw new Error(data.error?.message || 'Gemini request failed');
+    const answer = data.candidates?.[0]?.content?.parts?.map(part => part.text || '').join('').trim();
+    if (!answer) throw new Error('Gemini returned an empty response');
+    res.json({ answer });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
