@@ -1417,7 +1417,7 @@ async function loadHomework(){
     const hw=await api('/api/homework');
     const list=document.getElementById('hwList'); list.innerHTML='';
     if(!hw.length){list.innerHTML=`<div style="text-align:center;color:var(--text3);font-size:0.78rem;padding:2rem;">No assignments yet! 🎉</div>`;return;}
-    hw.forEach(h=>{ const el=document.createElement('div'); el.className='hw-item'+(h.done?' done':''); el.innerHTML=`<div class="hw-check${h.done?' checked':''}" onclick="toggleHW('${h._id}',${!h.done})">${h.done?'✓':''}</div><div class="hw-body"><div class="hw-name">${esc(h.title)}</div><div class="hw-meta">${h.subject?`<span class="hw-tag" style="background:var(--surface3);color:var(--text2)">${esc(h.subject)}</span>`:''}<span class="hw-tag pri-${h.priority||'medium'}">${h.priority||'medium'}</span>${h.dueDate?`<span class="hw-due">Due ${fmtDate(new Date(h.dueDate))}</span>`:''}</div></div><button class="hw-del" onclick="deleteHW('${h._id}')">🗑</button>`; list.appendChild(el); });
+    hw.forEach(h=>{ const el=document.createElement('div'); el.className='hw-item'+(h.done?' done':''); el.innerHTML=`<div class="hw-check${h.done?' checked':''}" onclick="toggleHW('${h._id}',${!h.done})">${h.done?'✓':''}</div><div class="hw-body"><div class="hw-name">${esc(h.title)}</div><div class="hw-meta">${h.subject?`<span class="hw-tag" style="background:var(--surface3);color:var(--text2)">${esc(h.subject)}</span>`:''}<span class="hw-tag pri-${h.priority||'medium'}">${h.priority||'medium'}</span>${h.dueDate?`<span class="hw-due">Due ${fmtDate(new Date(h.dueDate))}</span>`:''}</div><button class="hw-add-btn" style="margin-top:.55rem;" onclick="generateHomeworkPlan('${h._id}',this)">✨ Break down</button><div class="hw-plan" style="display:none;"></div></div><button class="hw-del" onclick="deleteHW('${h._id}')">🗑</button>`; list.appendChild(el); });
   }catch(e){console.error(e);}
 }
 async function addHomework(){
@@ -1428,6 +1428,14 @@ async function addHomework(){
 }
 async function toggleHW(id,done){ await api(`/api/homework/${id}`,'PATCH',{done}); if(sideTab==='homework')loadHomework(); }
 async function deleteHW(id){ await api(`/api/homework/${id}`,'DELETE'); if(sideTab==='homework')loadHomework(); }
+async function generateHomeworkPlan(id,button){
+  const plan=button.nextElementSibling; button.disabled=true; button.textContent='Planning…'; plan.style.display='block'; plan.innerHTML='<div class="loading-row"><div class="spinner"></div></div>';
+  try{
+    const data=await api('/api/ai/homework-plan','POST',{homeworkId:id});
+    plan.innerHTML=`<div style="font-size:.78rem;color:var(--text2);margin-top:.55rem;"><strong>${esc(data.summary)}</strong><ol style="margin:.4rem 0 0 1.1rem;padding:0;">${data.steps.map(step=>`<li style="margin:.25rem 0;"><strong>${esc(step.title)}</strong>${step.detail?` - ${esc(step.detail)}`:''}</li>`).join('')}</ol>${data.tip?`<div style="margin-top:.45rem;color:var(--accent2);">Tip: ${esc(data.tip)}</div>`:''}</div>`;
+  }catch(e){plan.innerHTML=`<div style="margin-top:.5rem;color:var(--red);font-size:.75rem;">${esc(e.message)}</div>`;}
+  finally{button.disabled=false;button.textContent='✨ Break down';}
+}
 function populateCourseSelects(courses){
   ['hwCourse','noteCourse'].forEach(id=>{
     const select=document.getElementById(id); if(!select)return;

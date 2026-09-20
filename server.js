@@ -806,6 +806,40 @@ app.post('/api/ai/study-tools', auth, async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+app.post('/api/ai/homework-plan', auth, async (req, res) => {
+  try {
+    const { homeworkId } = req.body;
+    const apiKey = process.env.GROQ_API_KEY;
+    if (!apiKey) return res.status(400).json({ error: 'AI not configured. Add GROQ_API_KEY to .env' });
+    const homework = await Homework.findOne({ _id: homeworkId, userId: req.userId });
+    if (!homework) return res.status(404).json({ error: 'Assignment not found' });
+    const prompt = `Assignment: ${homework.title}
+Subject: ${homework.subject || 'Not specified'}
+Due date: ${homework.dueDate || 'Not specified'}
+Priority: ${homework.priority || 'medium'}
+Notes: ${homework.notes || 'None'}`;
+    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
+      body: JSON.stringify({
+        model: process.env.GROQ_MODEL || 'openai/gpt-oss-20b',
+        messages: [
+          { role: 'system', content: 'Create a realistic, concise homework plan. Return JSON only in this shape: {"summary":"...","steps":[{"title":"...","detail":"..."}],"tip":"..."}. Create 3-5 actionable steps. Keep each detail to one short sentence. Do not invent requirements.' },
+          { role: 'user', content: prompt }
+        ],
+        max_tokens: 768
+      })
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error?.message || 'Groq request failed');
+    const raw = data.choices?.[0]?.message?.content?.trim();
+    if (!raw) throw new Error('Groq returned an empty homework plan');
+    const plan = JSON.parse(raw.replace(/^```json\s*/i, '').replace(/\s*```$/i, ''));
+    if (!plan.summary || !Array.isArray(plan.steps) || !plan.steps.length) throw new Error('No homework plan was generated');
+    res.json({ summary: plan.summary, steps: plan.steps.slice(0, 5), tip: plan.tip || '' });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 // ── HOMEWORK ROUTES ───────────────────────────────────────────
 app.get('/api/homework', auth, async (req, res) => {
   const filter = { userId: req.userId };
