@@ -262,6 +262,12 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-vis
 .ai-ask-btn:hover{background:var(--accent2);}
 .ai-ask-btn:disabled{opacity:0.5;cursor:not-allowed;}
 .ai-label{font-size:0.65rem;font-weight:700;color:var(--accent2);letter-spacing:0.06em;}
+.quiz-question{margin-top:.65rem;padding-top:.55rem;border-top:1px solid var(--border);}
+.quiz-option{display:block;width:100%;margin-top:.3rem;padding:.35rem .5rem;text-align:left;border:1px solid var(--border);border-radius:7px;background:var(--surface2);color:var(--text);cursor:pointer;font-size:.74rem;}
+.quiz-option:hover{border-color:var(--accent);}
+.quiz-option.correct{border-color:#22d97a;color:#22d97a;}
+.quiz-option.wrong{border-color:#ff4757;color:#ff4757;}
+.quiz-feedback{font-size:.7rem;margin-top:.35rem;color:var(--text2);}
 
 /* ── CALL UI ── */
 .call-overlay{position:fixed;inset:0;background:rgba(8,9,12,0.95);z-index:500;display:none;flex-direction:column;align-items:center;justify-content:center;backdrop-filter:blur(8px);}
@@ -760,6 +766,7 @@ let socket=null, token=localStorage.getItem('meno_token')||null, myUser=JSON.par
 let pendingAttachment=null, pendingAttachmentPreviewUrl=null;
 let mediaRecorder=null, recordingStream=null, voiceChunks=[], pendingVoiceBlob=null, voicePreviewUrl=null, discardVoiceRecording=false;
 let activeId=null, activeType=null, activeRoomId=null;
+const studyQuizzes=new Map();
 let allItems=[], sideTab='chats', chatMode='dms';
 let selCliqueEmoji=CLIQUE_EMOJIS[0];
 let typTimer=null, typingUsers={};
@@ -1203,6 +1210,7 @@ function buildMsgRow(gel,msg,g,isMe,isLast,isClique){
   if(msg.type==='image') content=`<img class="img-msg" src="${msg.fileUrl}" alt="${esc(msg.fileName||'image')}" onclick="window.open('${msg.fileUrl}','_blank')">`;
   else if(msg.type==='voice') content=`<div class="voice-msg"><span>🎙️</span><audio controls src="${msg.fileUrl}"></audio></div>`;
   else if(msg.type==='file') content=`<a href="${msg.fileUrl}" target="_blank" style="text-decoration:none;color:inherit;"><div class="file-msg"><span class="file-icon">📄</span><div><div class="file-name">${esc(msg.fileName||'File')}</div><div class="file-size">${fmtSize(msg.fileSize)}</div></div></div></a>`;
+  else if(msg.type==='ai'&&msg.quiz) content=renderQuizMessage(msg.quizId,msg.quiz);
   else if(msg.type==='ai') content=`<div class="ai-tag">🤖 Meno AI</div>${esc(msg.text)}`;
   else content=esc(msg.text);
   bubble.innerHTML=`<div class="bactions"><button class="message-menu-btn" onclick="toggleMessageMenu(event,this)" title="Message options">⋯</button><div class="message-menu"><div class="message-menu-reactions">${reactions}</div>${downloadAction}${deleteAction}</div></div>${sLine}${content}`;
@@ -1400,10 +1408,32 @@ async function generateStudyTool(type){
     const data=await api('/api/ai/study-tools','POST',{type,courseId:activeId,context});
     const text=type==='flashcards'
       ? data.items.map((item,index)=>`${index+1}. ${item.question}\n   ${item.answer}`).join('\n\n')
-      : data.items.map((item,index)=>`${index+1}. ${item.question}\n   ${item.options.map((option,optionIndex)=>`${String.fromCharCode(65+optionIndex)}. ${option}`).join(' | ')}\n   Answer: ${item.answer}`).join('\n\n');
-    appendMessage({_id:'ai'+Date.now(),roomId:activeRoomId,senderId:'ai',senderName:'Meno AI',senderColor:var_accent,text:`${type==='flashcards'?'🃏 Flashcards':'❓ Quiz'}\n\n${text}`,type:'ai',createdAt:new Date().toISOString(),reactions:{}});
+      : '';
+    if(type==='quiz'){
+      const quizId='quiz'+Date.now();
+      studyQuizzes.set(quizId,{items:data.items,answered:new Set(),score:0});
+      appendMessage({_id:'ai'+Date.now(),roomId:activeRoomId,senderId:'ai',senderName:'Meno AI',senderColor:var_accent,quizId,quiz:data.items,type:'ai',createdAt:new Date().toISOString(),reactions:{}});
+    }else{
+      appendMessage({_id:'ai'+Date.now(),roomId:activeRoomId,senderId:'ai',senderName:'Meno AI',senderColor:var_accent,text:`🃏 Flashcards\n\n${text}`,type:'ai',createdAt:new Date().toISOString(),reactions:{}});
+    }
   }catch(e){showToast('🤖','Study tool error',e.message);}
   finally{buttons.forEach(button=>button.disabled=false);}
+}
+function renderQuizMessage(quizId,items){
+  return `<div class="ai-tag">🤖 Meno AI · ❓ Quiz</div><div data-quiz="${quizId}">${items.map((item,index)=>`<div class="quiz-question" data-question="${index}"><strong>${index+1}. ${esc(item.question)}</strong>${(item.options||[]).map((option,optionIndex)=>`<button class="quiz-option" onclick="answerQuiz('${quizId}',${index},${optionIndex},this)">${esc(option)}</button>`).join('')}<div class="quiz-feedback"></div></div>`).join('')}</div>`;
+}
+function answerQuiz(quizId,questionIndex,optionIndex,button){
+  const quiz=studyQuizzes.get(quizId); if(!quiz||quiz.answered.has(questionIndex))return;
+  const item=quiz.items[questionIndex]; quiz.answered.add(questionIndex);
+  const question=button.parentElement; const buttons=[...question.querySelectorAll('.quiz-option')];
+  buttons.forEach(option=>option.disabled=true);
+  const selected=item.options[optionIndex]; const correct=selected===item.answer;
+  if(correct){quiz.score++;button.classList.add('correct');}
+  else{button.classList.add('wrong');const correctButton=buttons.find(option=>option.textContent===item.answer);correctButton?.classList.add('correct');}
+  question.querySelector('.quiz-feedback').textContent=correct?'Correct! ✅':`Answer: ${item.answer}`;
+  if(quiz.answered.size===quiz.items.length){
+    const header=document.querySelector(`[data-quiz="${quizId}"]`); const score=document.createElement('div'); score.className='quiz-feedback'; score.textContent=`Score: ${quiz.score}/${quiz.items.length}`; header.appendChild(score);
+  }
 }
 const var_accent='#6c63ff';
 
