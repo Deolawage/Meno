@@ -772,6 +772,40 @@ app.post('/api/ai/ask', auth, async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+app.post('/api/ai/study-tools', auth, async (req, res) => {
+  try {
+    const { type, courseId, context } = req.body;
+    const apiKey = process.env.GROQ_API_KEY;
+    if (!apiKey) return res.status(400).json({ error: 'AI not configured. Add GROQ_API_KEY to .env' });
+    if (!['flashcards', 'quiz'].includes(type)) return res.status(400).json({ error: 'Choose flashcards or quiz' });
+    if (courseId && !await isCourseMember(courseId, req.userId)) return res.status(403).json({ error: 'You are not a member of this course' });
+    if (!context?.trim()) return res.status(400).json({ error: 'Add some course notes first' });
+    const instructions = type === 'flashcards'
+      ? 'Return JSON only in this shape: {"items":[{"question":"...","answer":"..."}]}. Create 5 concise flashcards from the notes.'
+      : 'Return JSON only in this shape: {"items":[{"question":"...","options":["...","...","...","..."],"answer":"..."}]}. Create 5 concise multiple-choice questions from the notes. The answer must exactly match one option.';
+    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
+      body: JSON.stringify({
+        model: process.env.GROQ_MODEL || 'openai/gpt-oss-20b',
+        messages: [
+          { role: 'system', content: `You create practical study materials. ${instructions} Do not include markdown or commentary.` },
+          { role: 'user', content: context.trim().slice(0, 12000) }
+        ],
+        max_tokens: 768
+      })
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error?.message || 'Groq request failed');
+    const raw = data.choices?.[0]?.message?.content?.trim();
+    if (!raw) throw new Error('Groq returned empty study materials');
+    const cleaned = raw.replace(/^```json\s*/i, '').replace(/\s*```$/i, '');
+    const result = JSON.parse(cleaned);
+    if (!Array.isArray(result.items) || !result.items.length) throw new Error('No study materials were generated');
+    res.json({ type, items: result.items.slice(0, 5) });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 // ── HOMEWORK ROUTES ───────────────────────────────────────────
 app.get('/api/homework', auth, async (req, res) => {
   const filter = { userId: req.userId };

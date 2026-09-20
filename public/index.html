@@ -553,6 +553,8 @@ video{border-radius:16px;background:#000;object-fit:cover;}
       <div class="ai-bar" id="aiBar" style="display:none;">
         <span class="ai-label">🤖 AI</span>
         <input class="ai-inp" id="aiInp" placeholder="Ask anything… e.g. explain photosynthesis" onkeydown="if(event.key==='Enter')askAI()">
+        <button class="ai-ask-btn" onclick="generateStudyTool('flashcards')" title="Generate flashcards">🃏</button>
+        <button class="ai-ask-btn" onclick="generateStudyTool('quiz')" title="Generate quiz">❓</button>
         <button class="ai-ask-btn" id="aiAskBtn" onclick="askAI()">Ask →</button>
       </div>
       <div class="input-area">
@@ -1388,6 +1390,20 @@ async function askAI(){
     if(activeRoomId&&socket) socket.emit('send_message',{roomId:activeRoomId,text:data.answer,senderName:'Meno AI',senderColor:'#6c63ff',type:'ai'});
   }catch(e){ showToast('🤖','AI error',e.message); }
   finally{ btn.disabled=false; btn.textContent='Ask →'; }
+}
+async function generateStudyTool(type){
+  if(activeType!=='course'){showToast('🤖','Open a course','Study tools use notes from the active course chat.');return;}
+  const buttons=document.querySelectorAll('#aiBar .ai-ask-btn'); buttons.forEach(button=>button.disabled=true);
+  try{
+    const notes=await api(`/api/notes?courseId=${encodeURIComponent(activeId)}`);
+    const context=notes.map(note=>`${note.title}\n${note.content}`).join('\n\n');
+    const data=await api('/api/ai/study-tools','POST',{type,courseId:activeId,context});
+    const text=type==='flashcards'
+      ? data.items.map((item,index)=>`${index+1}. ${item.question}\n   ${item.answer}`).join('\n\n')
+      : data.items.map((item,index)=>`${index+1}. ${item.question}\n   ${item.options.map((option,optionIndex)=>`${String.fromCharCode(65+optionIndex)}. ${option}`).join(' | ')}\n   Answer: ${item.answer}`).join('\n\n');
+    appendMessage({_id:'ai'+Date.now(),roomId:activeRoomId,senderId:'ai',senderName:'Meno AI',senderColor:var_accent,text:`${type==='flashcards'?'🃏 Flashcards':'❓ Quiz'}\n\n${text}`,type:'ai',createdAt:new Date().toISOString(),reactions:{}});
+  }catch(e){showToast('🤖','Study tool error',e.message);}
+  finally{buttons.forEach(button=>button.disabled=false);}
 }
 const var_accent='#6c63ff';
 
