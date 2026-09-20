@@ -26,7 +26,7 @@ Meno is a real-time student social and study app built for university students. 
 ### ?? Study Tools
 - **Homework Tracker** ? Add assignments with subject, due date and priority
 - **Pomodoro Timer** ? Focus timer with 25/5/15 minute modes and session stats
-- **AI Study Assistant** ? Powered by Google Gemini, ask anything right inside a chat
+- **AI Study Assistant** ? Powered by Groq, ask anything right inside a chat
 - **Study Sessions** ? Schedule study sessions inside any Clique
 - **Auto Study Groups** ? Automatically matched to a study group based on your school, course and level
 
@@ -112,7 +112,9 @@ JWT_SECRET=your_random_secret_here
 PORT=3000
 
 # Optional - for AI assistant
-GEMINI_API_KEY=your_gemini_api_key
+GROQ_API_KEY=your_groq_api_key
+# Optional model override
+# GROQ_MODEL=llama-3.3-70b-versatile
 
 # Optional - for push notifications
 VAPID_PUBLIC_KEY=your_vapid_public_key
@@ -177,7 +179,8 @@ existing Meno users by email from the course management flow.
 | `APP_URL` | ? Yes | URL used for verification and password reset links |
 | `JWT_SECRET` | ? Yes | Any long random string for token signing |
 | `PORT` | ? No | Server port (default: 3000) |
-| `GEMINI_API_KEY` | ? No | Google Gemini API key for AI assistant |
+| `GROQ_API_KEY` | ? No | Groq API key for AI assistant |
+| `GROQ_MODEL` | ? No | Optional Groq model name |
 | `VAPID_PUBLIC_KEY` | ? No | For push notifications |
 | `VAPID_PRIVATE_KEY` | ? No | For push notifications |
 | `VAPID_EMAIL` | ? No | For push notifications |

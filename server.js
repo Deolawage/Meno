@@ -748,23 +748,26 @@ app.post('/api/upload', auth, upload.single('file'), async (req, res) => {
 app.post('/api/ai/ask', auth, async (req, res) => {
   try {
     const { question, context } = req.body;
-    const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey) return res.status(400).json({ error: 'AI not configured. Add GEMINI_API_KEY to .env' });
+    const apiKey = process.env.GROQ_API_KEY;
+    if (!apiKey) return res.status(400).json({ error: 'AI not configured. Add GROQ_API_KEY to .env' });
 
     const prompt = context ? `Context: ${context}\n\nQuestion: ${question}` : question;
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${encodeURIComponent(apiKey)}`, {
+    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
       body: JSON.stringify({
-        systemInstruction: { parts: [{ text: 'You are Meno AI, a friendly and helpful study assistant for students. Keep answers clear, concise and encouraging. Use emojis occasionally to keep it friendly. If asked to explain something, break it down simply.' }] },
-        contents: [{ role: 'user', parts: [{ text: prompt }] }],
-        generationConfig: { maxOutputTokens: 1024 }
+        model: process.env.GROQ_MODEL || 'llama-3.3-70b-versatile',
+        messages: [
+          { role: 'system', content: 'You are Meno AI, a friendly and helpful study assistant for students. Keep answers clear, concise and encouraging. Use emojis occasionally to keep it friendly. If asked to explain something, break it down simply.' },
+          { role: 'user', content: prompt }
+        ],
+        max_tokens: 1024
       })
     });
     const data = await response.json();
-    if (!response.ok) throw new Error(data.error?.message || 'Gemini request failed');
-    const answer = data.candidates?.[0]?.content?.parts?.map(part => part.text || '').join('').trim();
-    if (!answer) throw new Error('Gemini returned an empty response');
+    if (!response.ok) throw new Error(data.error?.message || 'Groq request failed');
+    const answer = data.choices?.[0]?.message?.content?.trim();
+    if (!answer) throw new Error('Groq returned an empty response');
     res.json({ answer });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
