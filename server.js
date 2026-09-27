@@ -320,7 +320,7 @@ app.post('/api/register', async (req, res) => {
       color: color || '#6c63ff'
     });
     if (!data.session) {
-      return res.status(201).json({ needsVerification: true, message: 'Check your email to verify your Meno account before signing in.' });
+      return res.status(201).json({ needsVerification: true, message: 'Check your email to verify your Klasora account before signing in.' });
     }
     res.json({ token: signToken(user), user: safeUser(user) });
   } catch (e) {
@@ -395,7 +395,7 @@ app.post('/api/auth/sync', async (req, res) => {
     res.json({ token: signToken(user), user: safeUser(user) });
   } catch (e) {
     console.error('Google profile sync failed:', e);
-    res.status(500).json({ error: 'Google sign-in succeeded, but the Meno profile could not be created.' });
+    res.status(500).json({ error: 'Google sign-in succeeded, but the Klasora profile could not be created.' });
   }
 });
 
@@ -441,7 +441,7 @@ app.post('/api/auth/update-password', async (req, res) => {
 });
 
 app.get('/api/me',             auth, async (req, res) => { const u = await User.findById(req.userId); res.json(safeUser(u)); });
-app.get('/api/users/search',   auth, async (req, res) => { const u = await User.findOne({ email: req.query.email?.toLowerCase() }); if (!u) return res.status(404).json({ error: 'No Meno user with that email' }); res.json(safeUser(u)); });
+app.get('/api/users/search',   auth, async (req, res) => { const u = await User.findOne({ email: req.query.email?.toLowerCase() }); if (!u) return res.status(404).json({ error: 'No Klasora user with that email' }); res.json(safeUser(u)); });
 
 app.patch('/api/me/theme', auth, async (req, res) => {
   const u = await User.findByIdAndUpdate(req.userId, { theme: req.body.theme }, { new: true });
@@ -568,7 +568,7 @@ app.post('/api/courses/:id/invite', auth, async (req, res) => {
     const email = req.body.email?.trim().toLowerCase();
     if (!email) return res.status(400).json({ error: 'Email is required' });
     const member = await User.findOne({ email });
-    if (!member) return res.status(404).json({ error: 'No Meno user found with that email' });
+    if (!member) return res.status(404).json({ error: 'No Klasora user found with that email' });
     const updated = await Course.findByIdAndUpdate(course._id, { $addToSet: { members: member._id } }, { new: true });
     res.json(updated);
   } catch (e) { res.status(500).json({ error: e.message }); }
@@ -758,7 +758,7 @@ app.post('/api/ai/ask', auth, async (req, res) => {
       body: JSON.stringify({
         model: process.env.GROQ_MODEL || 'openai/gpt-oss-20b',
         messages: [
-          { role: 'system', content: 'You are Meno AI, a friendly study assistant for students. Be directly relevant to the question and use the supplied course context when present. Never claim to have read file contents unless their text is included in the context. If the context does not contain the answer, say so briefly and answer from general knowledge only when appropriate. Answer in 2-4 short sentences or up to 5 concise bullet points. Give only the essential explanation; do not add an introduction, conclusion, repeated question, or unrelated tips. Use simple language and an occasional emoji only when natural.' },
+          { role: 'system', content: 'You are Klasora AI, a friendly study assistant for students. Be directly relevant to the question and use the supplied course context when present. Never claim to have read file contents unless their text is included in the context. If the context does not contain the answer, say so briefly and answer from general knowledge only when appropriate. Answer in 2-4 short sentences or up to 5 concise bullet points. Give only the essential explanation; do not add an introduction, conclusion, repeated question, or unrelated tips. Use simple language and an occasional emoji only when natural.' },
           { role: 'user', content: prompt }
         ],
         max_tokens: 256
@@ -1040,7 +1040,7 @@ app.get('*', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.ht
 
 const PORT = process.env.PORT || 3000;
 if (require.main === module) {
-  server.listen(PORT, () => console.log(`🚀 Meno v2 running on http://localhost:${PORT}`));
+  server.listen(PORT, () => console.log(`🚀 Klasora v2 running on http://localhost:${PORT}`));
 }
 
 module.exports = { app, server };

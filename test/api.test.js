@@ -37,7 +37,13 @@ after(() => child?.kill());
 test('serves the application shell', async () => {
   const response = await request('/');
   assert.equal(response.status, 200);
-  assert.match(await response.text(), /Meno/);
+  assert.match(await response.text(), /<title>Klasora/);
+  const logo = await request('/klasora-logo.png');
+  assert.equal(logo.status, 200);
+  assert.match(logo.headers.get('content-type') || '', /image\/png/);
+  const serviceWorker = await request('/sw.js');
+  assert.equal(serviceWorker.status, 200);
+  assert.match(await serviceWorker.text(), /Klasora/);
 });
 
 test('rejects protected routes without a token', async () => {
