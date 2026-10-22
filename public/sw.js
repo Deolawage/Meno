@@ -1,9 +1,9 @@
 self.addEventListener('push', e => {
   const data = e.data?.json() || {};
-  e.waitUntil(self.registration.showNotification(data.title || 'Meno', {
+  e.waitUntil(self.registration.showNotification(data.title || 'Klasora', {
     body: data.body || 'New message',
-    icon: '/icon.png',
-    badge: '/icon.png',
+    icon: '/klasora-logo.png',
+    badge: '/klasora-logo.png',
     data: data.data || {}
   }));
 });
